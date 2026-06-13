@@ -1,134 +1,565 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="ar" dir="ltr">
 <head>
-
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>GPS Sender</title>
+<title>GPS Sender — EMG Mohammad Sagher</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 
 <style>
+  :root {
+    --neon-cyan: #00f5ff;
+    --neon-blue: #0080ff;
+    --neon-purple: #8b00ff;
+    --dark-bg: #020814;
+    --card-bg: #040d1e;
+    --panel-bg: #071428;
+  }
 
-body{
-font-family:Arial;
-text-align:center;
-padding:30px;
-}
+  * { box-sizing: border-box; margin: 0; padding: 0; }
 
-button{
-padding:12px 25px;
-margin:10px;
-font-size:18px;
-cursor:pointer;
-}
+  body {
+    background: var(--dark-bg);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Rajdhani', sans-serif;
+  }
 
-#status{
-margin-top:20px;
-font-size:18px;
-}
+  .gps-root {
+    background: var(--dark-bg);
+    min-height: 580px;
+    width: 100%;
+    max-width: 500px;
+    border-radius: 20px;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 36px 28px 32px;
+    border: 1px solid rgba(0,245,255,0.12);
+  }
 
+  /* ── Stars background ── */
+  .stars-bg {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+  }
+  .star {
+    position: absolute;
+    border-radius: 50%;
+    background: white;
+    animation: twinkle var(--d,2s) ease-in-out infinite alternate;
+  }
+  @keyframes twinkle {
+    from { opacity: 0.1; transform: scale(0.8); }
+    to   { opacity: 0.9; transform: scale(1.2); }
+  }
+
+  /* ── Animated grid ── */
+  .grid-lines {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background-image:
+      linear-gradient(rgba(0,245,255,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,245,255,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    animation: gridMove 8s linear infinite;
+  }
+  @keyframes gridMove {
+    from { background-position: 0 0; }
+    to   { background-position: 40px 40px; }
+  }
+
+  /* ── Corner decorations ── */
+  .corner-deco {
+    position: absolute;
+    width: 40px; height: 40px;
+    z-index: 1;
+    pointer-events: none;
+  }
+  .corner-deco.tl { top:10px; left:10px;  border-top:2px solid var(--neon-cyan); border-left:2px solid var(--neon-cyan);  border-radius:4px 0 0 0; }
+  .corner-deco.tr { top:10px; right:10px; border-top:2px solid var(--neon-cyan); border-right:2px solid var(--neon-cyan); border-radius:0 4px 0 0; }
+  .corner-deco.bl { bottom:10px; left:10px;  border-bottom:2px solid var(--neon-cyan); border-left:2px solid var(--neon-cyan);  border-radius:0 0 0 4px; }
+  .corner-deco.br { bottom:10px; right:10px; border-bottom:2px solid var(--neon-cyan); border-right:2px solid var(--neon-cyan); border-radius:0 0 4px 0; }
+
+  /* ── Title ── */
+  .title-wrap {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    margin-bottom: 8px;
+  }
+  .title-label {
+    font-size: 11px;
+    letter-spacing: 5px;
+    color: var(--neon-cyan);
+    opacity: 0.7;
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 600;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .title-main {
+    font-family: 'Orbitron', monospace;
+    font-size: 32px;
+    font-weight: 900;
+    letter-spacing: 4px;
+    color: white;
+    text-shadow: 0 0 20px rgba(0,245,255,0.6), 0 0 40px rgba(0,128,255,0.4);
+    animation: titlePulse 3s ease-in-out infinite;
+  }
+  @keyframes titlePulse {
+    0%,100% { text-shadow: 0 0 20px rgba(0,245,255,0.6), 0 0 40px rgba(0,128,255,0.4); }
+    50%      { text-shadow: 0 0 35px rgba(0,245,255,0.9), 0 0 60px rgba(0,128,255,0.6), 0 0 80px rgba(139,0,255,0.3); }
+  }
+  .dev-badge {
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: rgba(255,255,255,0.35);
+    font-family: 'Rajdhani', sans-serif;
+    margin-top: 4px;
+    text-transform: uppercase;
+  }
+  .dev-badge span { color: var(--neon-cyan); opacity: 0.8; }
+
+  /* ── Radar ── */
+  .radar-wrap {
+    position: relative;
+    z-index: 2;
+    width: 150px; height: 150px;
+    margin: 18px auto 18px;
+  }
+  .radar-ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid rgba(0,245,255,0.22);
+    inset: 0;
+  }
+  .radar-ring:nth-child(2) { inset: 25%; }
+  .radar-ring:nth-child(3) { inset: 50%; }
+  .radar-cross { position: absolute; inset: 0; }
+  .radar-cross::before, .radar-cross::after {
+    content: '';
+    position: absolute;
+    background: rgba(0,245,255,0.18);
+  }
+  .radar-cross::before { top:50%; left:0; right:0; height:1px; transform:translateY(-50%); }
+  .radar-cross::after  { left:50%; top:0; bottom:0; width:1px; transform:translateX(-50%); }
+  .radar-sweep {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    overflow: hidden;
+    animation: sweep 2.5s linear infinite;
+  }
+  .radar-sweep::before {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 50%; height: 50%;
+    transform-origin: 0% 100%;
+    background: conic-gradient(from 0deg, transparent 0deg, rgba(0,245,255,0.4) 60deg, transparent 60deg);
+  }
+  @keyframes sweep {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+  .radar-dot {
+    position: absolute;
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    background: var(--neon-cyan);
+    top:50%; left:50%;
+    transform: translate(-50%,-50%);
+    animation: dotPulse 1.5s ease-in-out infinite;
+    box-shadow: 0 0 10px var(--neon-cyan);
+    z-index: 3;
+  }
+  @keyframes dotPulse {
+    0%,100% { transform: translate(-50%,-50%) scale(1); opacity:1; }
+    50%      { transform: translate(-50%,-50%) scale(1.7); opacity:0.5; }
+  }
+  .ping {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid var(--neon-cyan);
+    opacity: 0;
+    top:50%; left:50%;
+    transform: translate(-50%,-50%);
+    animation: pingAnim 2.5s ease-out infinite;
+  }
+  .ping:nth-child(6) { animation-delay:0s; }
+  .ping:nth-child(7) { animation-delay:0.8s; }
+  .ping:nth-child(8) { animation-delay:1.6s; }
+  @keyframes pingAnim {
+    0%   { width:9px;  height:9px;  opacity:0.8; }
+    100% { width:90px; height:90px; opacity:0; }
+  }
+
+  /* ── Buttons ── */
+  .buttons-row {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    gap: 16px;
+    margin-bottom: 22px;
+  }
+  .btn-3d {
+    position: relative;
+    font-family: 'Orbitron', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 14px 26px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    outline: none;
+    transition: transform 0.12s, filter 0.12s;
+    overflow: hidden;
+    color: white;
+  }
+  .btn-3d::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 8px;
+    opacity: 0;
+    transition: opacity 0.2s;
+    background: rgba(255,255,255,0.12);
+  }
+  .btn-3d:hover::before { opacity: 1; }
+  .btn-3d:active { transform: scale(0.96) translateY(2px); filter: brightness(0.82); }
+  .btn-3d::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 8px;
+    background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.18) 50%, transparent 60%);
+    background-size: 200% 100%;
+    animation: shimmer 2.5s linear infinite;
+  }
+  @keyframes shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+  .btn-start {
+    background: linear-gradient(145deg, #004aad, #0077ff, #00c2ff);
+    box-shadow: 0 4px 0 #002d70, 0 6px 18px rgba(0,120,255,0.5), inset 0 1px 0 rgba(255,255,255,0.2);
+  }
+  .btn-stop {
+    background: linear-gradient(145deg, #6a00a8, #9f00ff, #d000ff);
+    box-shadow: 0 4px 0 #3d0060, 0 6px 18px rgba(159,0,255,0.5), inset 0 1px 0 rgba(255,255,255,0.2);
+  }
+  .btn-icon { display:inline-block; margin-right:6px; vertical-align:-2px; font-size:15px; }
+
+  /* ── Status Panel ── */
+  .status-panel {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    background: var(--panel-bg);
+    border: 1px solid rgba(0,245,255,0.16);
+    border-radius: 12px;
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .status-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Orbitron', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: rgba(0,245,255,0.6);
+    text-transform: uppercase;
+    border-bottom: 1px solid rgba(0,245,255,0.1);
+    padding-bottom: 12px;
+  }
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #444;
+    transition: background 0.4s;
+    flex-shrink: 0;
+  }
+  .status-dot.active {
+    background: var(--neon-cyan);
+    box-shadow: 0 0 8px var(--neon-cyan);
+    animation: statusBlink 1s ease-in-out infinite;
+  }
+  @keyframes statusBlink {
+    0%,100% { opacity:1; }
+    50%      { opacity:0.35; }
+  }
+  .coord-row { display: flex; gap: 10px; }
+  .coord-box {
+    flex: 1;
+    background: rgba(0,245,255,0.05);
+    border: 1px solid rgba(0,245,255,0.1);
+    border-radius: 8px;
+    padding: 10px 14px;
+  }
+  .coord-label {
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: rgba(0,245,255,0.5);
+    font-family: 'Orbitron', monospace;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+  }
+  .coord-value {
+    font-family: 'Orbitron', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.45);
+    letter-spacing: 1px;
+    min-height: 18px;
+    transition: color 0.3s;
+  }
+  .coord-value.live { color: var(--neon-cyan); }
+  .status-text-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: rgba(255,255,255,0.45);
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 600;
+    letter-spacing: 1px;
+  }
+  .status-text-row.active-status { color: var(--neon-cyan); }
+
+  /* ── Signal bars ── */
+  .signal-bars {
+    display: flex;
+    gap: 3px;
+    align-items: flex-end;
+    height: 18px;
+    margin-left: auto;
+  }
+  .signal-bar {
+    width: 5px;
+    background: rgba(255,255,255,0.12);
+    border-radius: 2px;
+    transition: background 0.4s;
+  }
+  .signal-bar:nth-child(1) { height:5px; }
+  .signal-bar:nth-child(2) { height:9px; }
+  .signal-bar:nth-child(3) { height:13px; }
+  .signal-bar:nth-child(4) { height:18px; }
+  .signal-bars.active .signal-bar {
+    background: var(--neon-cyan);
+    box-shadow: 0 0 5px var(--neon-cyan);
+    animation: signalWave 1.5s ease-in-out infinite;
+  }
+  .signal-bars.active .signal-bar:nth-child(1) { animation-delay:0s; }
+  .signal-bars.active .signal-bar:nth-child(2) { animation-delay:0.2s; }
+  .signal-bars.active .signal-bar:nth-child(3) { animation-delay:0.4s; }
+  .signal-bars.active .signal-bar:nth-child(4) { animation-delay:0.6s; }
+  @keyframes signalWave {
+    0%,100% { opacity:1; }
+    50%      { opacity:0.3; }
+  }
+
+  .timestamp {
+    font-size: 10px;
+    color: rgba(255,255,255,0.22);
+    font-family: 'Orbitron', monospace;
+    letter-spacing: 1px;
+    text-align: right;
+  }
 </style>
-
 </head>
-
 <body>
 
-<h1>GPS Sender</h1>
+<div class="gps-root">
+  <!-- Backgrounds -->
+  <div class="stars-bg" id="starsBg"></div>
+  <div class="grid-lines"></div>
 
-<button onclick="startTracking()">
-Start Tracking
-</button>
+  <!-- Corner decorations -->
+  <div class="corner-deco tl"></div>
+  <div class="corner-deco tr"></div>
+  <div class="corner-deco bl"></div>
+  <div class="corner-deco br"></div>
 
-<button onclick="stopTracking()">
-Stop Tracking
-</button>
+  <!-- Title -->
+  <div class="title-wrap">
+    <div class="title-label">Real-Time Tracking System</div>
+    <div class="title-main">GPS SENDER</div>
+    <div class="dev-badge">Developed by <span>EMG Mohammad Sagher</span></div>
+  </div>
 
-<div id="status">
-Tracking Stopped
+  <!-- Radar -->
+  <div class="radar-wrap">
+    <div class="radar-ring"></div>
+    <div class="radar-ring"></div>
+    <div class="radar-ring"></div>
+    <div class="radar-cross"></div>
+    <div class="radar-sweep" id="radarSweep"></div>
+    <div class="ping"></div>
+    <div class="ping"></div>
+    <div class="ping"></div>
+    <div class="radar-dot"></div>
+  </div>
+
+  <!-- Buttons -->
+  <div class="buttons-row">
+    <button class="btn-3d btn-start" onclick="startTracking()">
+      <i class="ti ti-player-play btn-icon" aria-hidden="true"></i>Start Tracking
+    </button>
+    <button class="btn-3d btn-stop" onclick="stopTracking()">
+      <i class="ti ti-player-pause btn-icon" aria-hidden="true"></i>Stop Tracking
+    </button>
+  </div>
+
+  <!-- Status panel -->
+  <div class="status-panel">
+    <div class="status-header">
+      <div class="status-dot" id="statusDot"></div>
+      <span>GPS Signal Status</span>
+      <div class="signal-bars" id="signalBars">
+        <div class="signal-bar"></div>
+        <div class="signal-bar"></div>
+        <div class="signal-bar"></div>
+        <div class="signal-bar"></div>
+      </div>
+    </div>
+
+    <div class="coord-row">
+      <div class="coord-box">
+        <div class="coord-label">Latitude</div>
+        <div class="coord-value" id="latVal">—</div>
+      </div>
+      <div class="coord-box">
+        <div class="coord-label">Longitude</div>
+        <div class="coord-value" id="lonVal">—</div>
+      </div>
+    </div>
+
+    <div class="status-text-row" id="statusRow">
+      <i class="ti ti-satellite" aria-hidden="true" style="font-size:16px;"></i>
+      <span id="statusMsg">Tracking Stopped</span>
+    </div>
+
+    <div class="timestamp" id="tsLine"></div>
+  </div>
 </div>
 
+
+<!-- ═══════════════════════════════════════════════
+     Firebase SDK  (الكود الأصلي)
+═══════════════════════════════════════════════ -->
 <script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  /* ── إعدادات Firebase الأصلية ── */
+  const firebaseConfig = {
+    apiKey:            "AIzaSyCg7tt1ZNyCu052ER7QETecNrbtnqOjzsU",
+    authDomain:        "car-security-app-e8b94.firebaseapp.com",
+    databaseURL:       "https://car-security-app-e8b94-default-rtdb.firebaseio.com",
+    projectId:         "car-security-app-e8b94",
+    storageBucket:     "car-security-app-e8b94.firebasestorage.app",
+    messagingSenderId: "614504432857",
+    appId:             "1:614504432857:web:a914a36f920f6f9de1eac8",
+    measurementId:     "G-DX9B5TBE2Y"
+  };
 
-import {
-getDatabase,
-ref,
-set
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+  const app = initializeApp(firebaseConfig);
+  const db  = getDatabase(app);
+  let watchId = null;
 
-const firebaseConfig = {
-  apiKey: "AIzaSyCg7tt1ZNyCu052ER7QETecNrbtnqOjzsU",
-  authDomain: "car-security-app-e8b94.firebaseapp.com",
-  databaseURL: "https://car-security-app-e8b94-default-rtdb.firebaseio.com",
-  projectId: "car-security-app-e8b94",
-  storageBucket: "car-security-app-e8b94.firebasestorage.app",
-  messagingSenderId: "614504432857",
-  appId: "1:614504432857:web:a914a36f920f6f9de1eac8",
-  measurementId: "G-DX9B5TBE2Y"
-};
+  /* ── helpers للواجهة ── */
+  function setUI(on, msg, lat, lon) {
+    document.getElementById('statusDot').classList.toggle('active', on);
+    document.getElementById('signalBars').classList.toggle('active', on);
+    document.getElementById('statusRow').classList.toggle('active-status', on);
+    document.getElementById('statusMsg').textContent = msg;
 
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
+    const latEl = document.getElementById('latVal');
+    const lonEl = document.getElementById('lonVal');
 
-let watchId = null;
+    if (on && lat !== null) {
+      latEl.textContent = lat.toFixed(6);
+      lonEl.textContent = lon.toFixed(6);
+      latEl.classList.add('live');
+      lonEl.classList.add('live');
+      const now = new Date();
+      document.getElementById('tsLine').textContent =
+        'Last update: ' + now.toTimeString().slice(0, 8);
+      document.getElementById('radarSweep').style.animationDuration = '1.8s';
+    } else {
+      latEl.textContent = '—';
+      lonEl.textContent = '—';
+      latEl.classList.remove('live');
+      lonEl.classList.remove('live');
+      document.getElementById('tsLine').textContent = '';
+      document.getElementById('radarSweep').style.animationDuration = '2.5s';
+    }
+  }
 
-window.startTracking = function(){
+  /* ── startTracking (الكود الأصلي + تحديث الواجهة) ── */
+  window.startTracking = function () {
+    setUI(false, 'Acquiring signal…', null, null);
 
-document.getElementById("status").innerHTML =
-"Tracking Started";
+    watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        const latitude  = position.coords.latitude;
+        const longitude = position.coords.longitude;
 
-watchId =
-navigator.geolocation.watchPosition(
+        /* حفظ في Firebase — الكود الأصلي بدون تغيير */
+        set(ref(db, "gps"), {
+          latitude:  latitude,
+          longitude: longitude,
+          timestamp: Date.now()
+        });
 
-(position)=>{
+        setUI(true, 'Signal locked — transmitting', latitude, longitude);
+      },
+      (error) => {
+        setUI(false, error.message, null, null);
+      },
+      { enableHighAccuracy: true }
+    );
+  };
 
-const latitude = position.coords.latitude;
-const longitude = position.coords.longitude;
+  /* ── stopTracking (الكود الأصلي + تحديث الواجهة) ── */
+  window.stopTracking = function () {
+    if (watchId !== null) {
+      navigator.geolocation.clearWatch(watchId);
+      watchId = null;
+    }
+    setUI(false, 'Tracking Stopped', null, null);
+  };
 
-set(ref(db,"gps"),{
-latitude: latitude,
-longitude: longitude,
-timestamp: Date.now()
-});
-
-document.getElementById("status").innerHTML =
-"Latitude: " + latitude +
-"<br>Longitude: " + longitude;
-
-},
-
-(error)=>{
-
-document.getElementById("status").innerHTML =
-error.message;
-
-},
-
-{
-enableHighAccuracy:true
-}
-
-);
-
-}
-
-window.stopTracking = function(){
-
-if(watchId!==null){
-
-navigator.geolocation.clearWatch(watchId);
-
-document.getElementById("status").innerHTML =
-"Tracking Stopped";
-
-}
-
-}
-
+  /* ── توليد النجوم عشوائياً ── */
+  const starsBg = document.getElementById('starsBg');
+  for (let i = 0; i < 90; i++) {
+    const s   = document.createElement('div');
+    s.className = 'star';
+    const sz  = (Math.random() * 2 + 0.5).toFixed(1);
+    s.style.cssText =
+      `width:${sz}px;height:${sz}px;` +
+      `top:${(Math.random()*100).toFixed(1)}%;` +
+      `left:${(Math.random()*100).toFixed(1)}%;` +
+      `--d:${(Math.random()*2+1).toFixed(1)}s;` +
+      `animation-delay:${(Math.random()*3).toFixed(1)}s`;
+    starsBg.appendChild(s);
+  }
 </script>
 
 </body>
-
 </html>
