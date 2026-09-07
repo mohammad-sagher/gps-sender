@@ -464,19 +464,9 @@
 ═══════════════════════════════════════════════ -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-  import {
-    getDatabase,
-    ref,
-    set,
-    onValue,
-    onDisconnect,
-    remove
-  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+  import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
-  /* ─────────────────────────────────────────
-     Firebase
-  ───────────────────────────────────────── */
-
+  /* ── إعدادات Firebase الأصلية ── */
   const firebaseConfig = {
     apiKey:            "AIzaSyCg7tt1ZNyCu052ER7QETecNrbtnqOjzsU",
     authDomain:        "car-security-app-e8b94.firebaseapp.com",
@@ -490,487 +480,85 @@
 
   const app = initializeApp(firebaseConfig);
   const db  = getDatabase(app);
-
-  /* ─────────────────────────────────────────
-     Device ID
-     
-     كل جهاز يحصل على ID خاص فيه.
-     يبقى محفوظ حتى بعد إغلاق الصفحة.
-  ───────────────────────────────────────── */
-
-  let deviceId = localStorage.getItem("gps_device_id");
-
-  if (!deviceId) {
-    deviceId =
-      "device_" +
-      Date.now() +
-      "_" +
-      Math.random().toString(36).substring(2, 10);
-
-    localStorage.setItem("gps_device_id", deviceId);
-  }
-
-  console.log("My GPS Device ID:", deviceId);
-
-
-  /* ─────────────────────────────────────────
-     Variables
-  ───────────────────────────────────────── */
-
   let watchId = null;
 
-  let tracking = false;
-
-  // هل هذا الجهاز هو الجهاز النشط حاليًا؟
-  let isActiveDevice = false;
-
-
-  /* ─────────────────────────────────────────
-     Firebase References
-  ───────────────────────────────────────── */
-
-  const activeDeviceRef = ref(db, "gpsControl/activeDevice");
-  const gpsRef = ref(db, "gps");
-
-
-  /* ─────────────────────────────────────────
-     مراقبة الجهاز النشط
-     
-     أي جهاز يفتح الصفحة يسمع لهذا المسار.
-     
-     إذا جهاز آخر أصبح Active:
-     الجهاز الحالي يوقف التتبع.
-  ───────────────────────────────────────── */
-
-  onValue(activeDeviceRef, (snapshot) => {
-
-    const activeDevice = snapshot.val();
-
-    console.log("Current Active Device:", activeDevice);
-
-    if (!activeDevice) {
-      isActiveDevice = false;
-      return;
-    }
-
-    // إذا الجهاز النشط هو جهازي
-    if (activeDevice.deviceId === deviceId) {
-
-      isActiveDevice = true;
-
-      if (tracking) {
-        setUI(
-          true,
-          "Signal locked — transmitting",
-          null,
-          null
-        );
-      }
-
-      return;
-    }
-
-
-    // جهاز آخر أصبح Active
-    if (tracking && isActiveDevice) {
-
-      console.log(
-        "Another device started tracking. Stopping this device."
-      );
-
-      isActiveDevice = false;
-
-      stopLocalTracking(
-        "Another device is now tracking"
-      );
-    }
-
-  });
-
-
-  /* ─────────────────────────────────────────
-     UI
-  ───────────────────────────────────────── */
-
+  /* ── helpers للواجهة ── */
   function setUI(on, msg, lat, lon) {
+    document.getElementById('statusDot').classList.toggle('active', on);
+    document.getElementById('signalBars').classList.toggle('active', on);
+    document.getElementById('statusRow').classList.toggle('active-status', on);
+    document.getElementById('statusMsg').textContent = msg;
 
-    document
-      .getElementById("statusDot")
-      .classList.toggle("active", on);
-
-    document
-      .getElementById("signalBars")
-      .classList.toggle("active", on);
-
-    document
-      .getElementById("statusRow")
-      .classList.toggle("active-status", on);
-
-    document.getElementById("statusMsg").textContent = msg;
-
-
-    const latEl = document.getElementById("latVal");
-    const lonEl = document.getElementById("lonVal");
-
+    const latEl = document.getElementById('latVal');
+    const lonEl = document.getElementById('lonVal');
 
     if (on && lat !== null) {
-
       latEl.textContent = lat.toFixed(6);
       lonEl.textContent = lon.toFixed(6);
-
-      latEl.classList.add("live");
-      lonEl.classList.add("live");
-
-
+      latEl.classList.add('live');
+      lonEl.classList.add('live');
       const now = new Date();
-
-      document.getElementById("tsLine").textContent =
-        "Last update: " +
-        now.toTimeString().slice(0, 8);
-
-
-      document
-        .getElementById("radarSweep")
-        .style.animationDuration = "1.8s";
-
+      document.getElementById('tsLine').textContent =
+        'Last update: ' + now.toTimeString().slice(0, 8);
+      document.getElementById('radarSweep').style.animationDuration = '1.8s';
     } else {
-
-      latEl.textContent = "—";
-      lonEl.textContent = "—";
-
-      latEl.classList.remove("live");
-      lonEl.classList.remove("live");
-
-      document.getElementById("tsLine").textContent = "";
-
-      document
-        .getElementById("radarSweep")
-        .style.animationDuration = "2.5s";
+      latEl.textContent = '—';
+      lonEl.textContent = '—';
+      latEl.classList.remove('live');
+      lonEl.classList.remove('live');
+      document.getElementById('tsLine').textContent = '';
+      document.getElementById('radarSweep').style.animationDuration = '2.5s';
     }
   }
 
-
-  /* ─────────────────────────────────────────
-     إيقاف التتبع المحلي فقط
-  ───────────────────────────────────────── */
-
-  function stopLocalTracking(message) {
-
-    if (watchId !== null) {
-
-      navigator.geolocation.clearWatch(watchId);
-
-      watchId = null;
-    }
-
-    tracking = false;
-
-    isActiveDevice = false;
-
-    setUI(false, message, null, null);
-  }
-
-
-  /* ─────────────────────────────────────────
-     START TRACKING
-  ───────────────────────────────────────── */
-
-  window.startTracking = async function () {
-
-    // إذا كان هذا الجهاز يتتبع مسبقًا
-    if (tracking) {
-      return;
-    }
-
-
-    setUI(
-      false,
-      "Taking control…",
-      null,
-      null
-    );
-
-
-    /*
-     * هذا الجهاز يصبح الجهاز النشط.
-     *
-     * أي جهاز آخر كان يتتبع
-     * سيكتشف التغيير ويوقف نفسه.
-     */
-
-    isActiveDevice = true;
-    tracking = true;
-
-
-    await set(activeDeviceRef, {
-
-      deviceId: deviceId,
-
-      startedAt: Date.now(),
-
-      userAgent: navigator.userAgent
-
-    });
-
-
-    /*
-     * إذا انقطع اتصال هذا الجهاز بـ Firebase
-     * نحذف Active Device.
-     *
-     * ملاحظة:
-     * هذا لا يعني أن GPS سيستمر بعد إغلاق الصفحة.
-     * فقط لتنظيف حالة الجهاز.
-     */
-
-    await onDisconnect(activeDeviceRef).remove();
-
-
-    /* ─────────────────────────────
-       Start GPS
-    ───────────────────────────── */
+  /* ── startTracking (الكود الأصلي + تحديث الواجهة) ── */
+  window.startTracking = function () {
+    setUI(false, 'Acquiring signal…', null, null);
 
     watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        const latitude  = position.coords.latitude;
+        const longitude = position.coords.longitude;
 
-      async (position) => {
-
-        /*
-         * أهم نقطة:
-         *
-         * قبل إرسال كل إحداثية نتأكد
-         * أن هذا الجهاز ما زال Active.
-         */
-
-        if (!tracking || !isActiveDevice) {
-
-          return;
-        }
-
-
-        const latitude =
-          position.coords.latitude;
-
-        const longitude =
-          position.coords.longitude;
-
-
-        /*
-         * نقرأ Active Device الحالي
-         *
-         * للتأكد أن جهازًا آخر
-         * لم يستلم التتبع.
-         */
-
-        const currentActive =
-          await new Promise((resolve) => {
-
-            const unsubscribe = onValue(
-              activeDeviceRef,
-              (snapshot) => {
-
-                unsubscribe();
-
-                resolve(snapshot.val());
-              },
-              {
-                onlyOnce: true
-              }
-            );
-
-          });
-
-
-        /*
-         * إذا أصبح جهاز آخر Active
-         * لا نرسل الإحداثية.
-         */
-
-        if (
-          !currentActive ||
-          currentActive.deviceId !== deviceId
-        ) {
-
-          console.log(
-            "This device is no longer active."
-          );
-
-          stopLocalTracking(
-            "Tracking taken by another device"
-          );
-
-          return;
-        }
-
-
-        /* ─────────────────────────
-           إرسال GPS
-        ───────────────────────── */
-
-        await set(gpsRef, {
-
-          latitude: latitude,
-
+        /* حفظ في Firebase — الكود الأصلي بدون تغيير */
+        set(ref(db, "gps"), {
+          latitude:  latitude,
           longitude: longitude,
-
-          timestamp: Date.now(),
-
-          deviceId: deviceId
-
+          timestamp: Date.now()
         });
 
-
-        setUI(
-          true,
-          "Signal locked — transmitting",
-          latitude,
-          longitude
-        );
-
+        setUI(true, 'Signal locked — transmitting', latitude, longitude);
       },
-
-
-      /* GPS Error */
-
       (error) => {
-
-        console.error(
-          "GPS Error:",
-          error
-        );
-
-        setUI(
-          false,
-          error.message,
-          null,
-          null
-        );
+        setUI(false, error.message, null, null);
       },
-
-
-      {
-        enableHighAccuracy: true,
-
-        maximumAge: 5000,
-
-        timeout: 15000
-      }
-
-    );
-
-
-    setUI(
-      false,
-      "Acquiring signal…",
-      null,
-      null
+      { enableHighAccuracy: true }
     );
   };
 
-
-  /* ─────────────────────────────────────────
-     STOP TRACKING
-  ───────────────────────────────────────── */
-
-  window.stopTracking = async function () {
-
+  /* ── stopTracking (الكود الأصلي + تحديث الواجهة) ── */
+  window.stopTracking = function () {
     if (watchId !== null) {
-
-      navigator.geolocation.clearWatch(
-        watchId
-      );
-
+      navigator.geolocation.clearWatch(watchId);
       watchId = null;
     }
-
-
-    tracking = false;
-
-    isActiveDevice = false;
-
-
-    /*
-     * لا نحذف GPS نفسه.
-     * نحذف فقط حالة الجهاز النشط.
-     */
-
-    try {
-
-      const currentActive =
-        await new Promise((resolve) => {
-
-          const unsubscribe = onValue(
-            activeDeviceRef,
-            (snapshot) => {
-
-              unsubscribe();
-
-              resolve(snapshot.val());
-            },
-            {
-              onlyOnce: true
-            }
-          );
-
-        });
-
-
-      /*
-       * نحذف Active Device فقط
-       * إذا كان هذا الجهاز هو صاحب التتبع.
-       */
-
-      if (
-        currentActive &&
-        currentActive.deviceId === deviceId
-      ) {
-
-        await remove(activeDeviceRef);
-      }
-
-    } catch (error) {
-
-      console.error(
-        "Stop tracking error:",
-        error
-      );
-    }
-
-
-    setUI(
-      false,
-      "Tracking Stopped",
-      null,
-      null
-    );
+    setUI(false, 'Tracking Stopped', null, null);
   };
 
-
-  /* ─────────────────────────────────────────
-     Stars
-  ───────────────────────────────────────── */
-
-  const starsBg =
-    document.getElementById("starsBg");
-
+  /* ── توليد النجوم عشوائياً ── */
+  const starsBg = document.getElementById('starsBg');
   for (let i = 0; i < 90; i++) {
-
-    const s =
-      document.createElement("div");
-
-    s.className = "star";
-
-    const sz =
-      (Math.random() * 2 + 0.5).toFixed(1);
-
+    const s   = document.createElement('div');
+    s.className = 'star';
+    const sz  = (Math.random() * 2 + 0.5).toFixed(1);
     s.style.cssText =
       `width:${sz}px;height:${sz}px;` +
-      `top:${(Math.random() * 100).toFixed(1)}%;` +
-      `left:${(Math.random() * 100).toFixed(1)}%;` +
-      `--d:${(Math.random() * 2 + 1).toFixed(1)}s;` +
-      `animation-delay:${(Math.random() * 3).toFixed(1)}s`;
-
+      `top:${(Math.random()*100).toFixed(1)}%;` +
+      `left:${(Math.random()*100).toFixed(1)}%;` +
+      `--d:${(Math.random()*2+1).toFixed(1)}s;` +
+      `animation-delay:${(Math.random()*3).toFixed(1)}s`;
     starsBg.appendChild(s);
   }
-
 </script>
 
 </body>
